@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/message_lookup_by_library.dart';
@@ -409,7 +409,7 @@ void main() {
       expect(Messenx.instance.languageCode, 'en');
     });
 
-    testWidgets('MaterialApp integration with MessenxDelegate and Messenx.of',
+    testWidgets('WidgetsApp integration with MessenxDelegate and Messenx.of',
         (WidgetTester tester) async {
       final localeNotifier = ValueNotifier<Locale>(const Locale('pt', 'AO'));
       Messenx? capturedMessenx;
@@ -418,35 +418,31 @@ void main() {
         ValueListenableBuilder<Locale>(
           valueListenable: localeNotifier,
           builder: (context, locale, _) {
-            return MaterialApp(
+            return WidgetsApp(
+              color: const Color(0xFF000000),
               locale: locale,
               supportedLocales: Messenx.instance.supportedLocales,
               localizationsDelegates: const [
                 MessenxDelegate(),
-                GlobalMaterialLocalizations.delegate,
                 GlobalWidgetsLocalizations.delegate,
-                GlobalCupertinoLocalizations.delegate,
               ],
-              home: Builder(
-                builder: (context) {
-                  capturedMessenx = Messenx.of(context);
-                  return Scaffold(
-                    body: Column(
-                      children: [
-                        Text('greeting'.translate),
-                        Text('step_of'
-                            .translateWith({'current': 2, 'total': 4})),
-                        Text(
-                          'account_records'.plural(
-                            3,
-                            args: {'account': 'Standard'},
-                          ),
-                        ),
-                      ],
+              builder: (context, _) {
+                capturedMessenx = Messenx.of(context);
+                return Column(
+                  children: [
+                    Text('greeting'.translate),
+                    Text(
+                      'step_of'.translateWith({'current': 2, 'total': 4}),
                     ),
-                  );
-                },
-              ),
+                    Text(
+                      'account_records'.plural(
+                        3,
+                        args: {'account': 'Standard'},
+                      ),
+                    ),
+                  ],
+                );
+              },
             );
           },
         ),

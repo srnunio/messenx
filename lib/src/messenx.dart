@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart';
 import 'package:messenx/src/composite_message_lookup.dart';
 
@@ -49,8 +49,9 @@ class Messenx {
   /// files, so a regional file only needs the keys that differ.
   String get localeName {
     final locale = _locale;
-    if (locale == null)
+    if (locale == null) {
       return Intl.canonicalizedLocale(Intl.getCurrentLocale());
+    }
     final country = locale.countryCode;
     return Intl.canonicalizedLocale(
       country == null || country.isEmpty

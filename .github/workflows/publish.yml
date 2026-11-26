@@ -1,19 +1,20 @@
-name: CI & Publish to pub.dev
+name: PR CI, Release & Publish to pub.dev
 
 on:
-  push:
-    branches: [main]
-    tags: ['v[0-9]+.[0-9]+.[0-9]+*']
   pull_request:
     branches: [main]
+    types: [opened, synchronize, reopened, closed]
 
 jobs:
   test-and-analyze:
     name: Analyze & Test
+    if: github.event.action != 'closed' || github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merged == true && 'main' || github.event.pull_request.head.sha }}
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -36,17 +37,20 @@ jobs:
       - name: Validate pub.dev package (dry-run)
         run: dart pub publish --dry-run
 
-  publish:
-    name: Publish to pub.dev
+  release-and-publish:
+    name: Create Release & Publish to pub.dev
     needs: test-and-analyze
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'pull_request' && github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     permissions:
       id-token: write
-      contents: read
+      contents: write
     steps:
-      - name: Checkout repository
+      - name: Checkout main branch
         uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
 
       - name: Set up Flutter
         uses: subosito/flutter-action@v2
@@ -54,5 +58,41 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Publish to pub.dev via OIDC
-        uses: dart-lang/setup-dart/publish@v1
+      - name: Extract version from pubspec.yaml
+        id: package_version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | awk '{print $2}' | tr -d '\r')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create Git Tag and GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          TAG="${{ steps.package_version.outputs.tag }}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists."
+          else
+            gh release create "$TAG" \
+              --target main \
+              --title "$TAG" \
+              --generate-notes
+          fi
+
+      - name: Publish to pub.dev
+        env:
+          PUB_CREDENTIALS: ${{ secrets.PUB_CREDENTIALS }}
+        run: |
+          if [ -n "$PUB_CREDENTIALS" ]; then
+            mkdir -p "$HOME/.config/dart"
+            echo "$PUB_CREDENTIALS" > "$HOME/.config/dart/pub-credentials.json"
+            flutter pub get
+            dart pub publish --force
+          else
+            TOKEN=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+              "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://pub.dev" | jq -r '.value')
+            export PUB_TOKEN="$TOKEN"
+            dart pub token add https://pub.dev --env-var=PUB_TOKEN
+            flutter pub get
+            dart pub publish --force
+          fi
