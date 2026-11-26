@@ -1,0 +1,29 @@
+name: messenx
+description: "Translation catalogs for Flutter apps on top of intl: several files per language merged into one map, regional overrides (pt_AO over pt), placeholders and CLDR plurals."
+version: 0.1.0
+homepage: https://github.com/srnunio/messenx
+repository: https://github.com/srnunio/messenx
+issue_tracker: https://github.com/srnunio/messenx/issues
+topics:
+  - internationalization
+  - i18n
+  - localization
+  - l10n
+  - intl
+
+environment:
+  sdk: ^3.6.0
+  flutter: ">=1.17.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  intl: ^0.20.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
